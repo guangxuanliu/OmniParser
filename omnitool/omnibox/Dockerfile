@@ -10,11 +10,12 @@ ARG DEBCONF_NONINTERACTIVE_SEEN="true"
 RUN set -eu && \
     apt-get update && \
     apt-get --no-install-recommends -y install \
+        python3 \
         bc \
         jq \
         curl \
         7zip \
-        wsdd \
+        wsdd2 \
         samba \
         xz-utils \
         wimtools \
