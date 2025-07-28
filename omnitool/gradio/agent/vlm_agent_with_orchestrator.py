@@ -207,7 +207,31 @@ class VLMOrchestratedAgent:
             print(f"Total token so far: {self.total_token_usage}. Total cost so far: $USD{self.total_cost:.5f}")
         
         vlm_response_json = extract_data(vlm_response, "json")
-        vlm_response_json = json.loads(vlm_response_json)
+        
+        # Clean up common JSON formatting issues
+        vlm_response_json = vlm_response_json.strip()
+        # Remove trailing commas before closing braces/brackets
+        import re
+        vlm_response_json = re.sub(r',(\s*[}\]])', r'\1', vlm_response_json)
+        
+        try:
+            vlm_response_json = json.loads(vlm_response_json)
+        except json.JSONDecodeError as e:
+            print(f"JSON parsing error: {e}")
+            print(f"Raw JSON content: {vlm_response_json}")
+            # Try to fix common issues and parse again
+            try:
+                # Remove any trailing commas after the last property
+                vlm_response_json = re.sub(r',(\s*)(?=})', r'\1', vlm_response_json)
+                vlm_response_json = json.loads(vlm_response_json)
+                print("Successfully parsed JSON after cleanup")
+            except json.JSONDecodeError as e2:
+                print(f"Failed to parse JSON even after cleanup: {e2}")
+                # Create a default response to continue execution
+                vlm_response_json = {
+                    "Reasoning": "JSON parsing failed, taking default action",
+                    "Next Action": "screenshot"
+                }
 
         img_to_show_base64 = parsed_screen["som_image_base64"]
         if "Box ID" in vlm_response_json:
@@ -302,13 +326,15 @@ Here is the list of all detected bounding boxes by IDs on the screen and their d
 
 Your available "Next Action" only include:
 - type: types a string of text.
-- left_click: move mouse to box id and left clicks.
-- right_click: move mouse to box id and right clicks.
-- double_click: move mouse to box id and double clicks.
+- left_click: move mouse to box id and left clicks (for buttons, links, and UI elements).
+- right_click: move mouse to box id and right clicks (for context menus).
+- double_click: move mouse to box id and double clicks (REQUIRED for opening desktop application icons, files, and folders on Windows desktop).
 - hover: move mouse to box id.
 - scroll_up: scrolls the screen up to view previous content.
 - scroll_down: scrolls the screen down, when the desired button is not visible, or you need to see more content. 
 - wait: waits for 1 second for the device to load or respond.
+
+IMPORTANT: On Windows desktop, to open application icons (like Chrome, Firefox, etc.), files, or folders, you MUST use "double_click" instead of "left_click".
 
 Based on the visual information from the screenshot image and the detected bounding boxes, please determine the next action, the Box ID you should operate on (if action is one of 'type', 'hover', 'scroll_up', 'scroll_down', 'wait', there should be no Box ID field), and the value (if the action is 'type') in order to complete the task.
 
@@ -321,6 +347,10 @@ Output format:
     "value": "xxx" # only provide value field if the action is type, else don't include value key
 }}
 ```
+
+CRITICAL: Your JSON response MUST be valid JSON format. Do NOT include trailing commas after the last property. For example:
+- CORRECT: {{"Box ID": 20}}
+- INCORRECT: {{"Box ID": 20,}}
 
 One Example:
 ```json
@@ -351,26 +381,29 @@ Another Example:
 
 IMPORTANT NOTES:
 1. You should only give a single action at a time.
+2. CRITICAL: When you see application icons on the Windows desktop (like Chrome, Firefox, File Explorer, etc.), you MUST use "double_click" to open them. Single clicking desktop icons will NOT open applications.
+3. Use "left_click" only for buttons, links, menu items, and other UI elements within applications.
+4. If you repeatedly try "left_click" on a desktop icon and it doesn't open, switch to "double_click" immediately.
 
 """
         thinking_model = "r1" in self.model
         if not thinking_model:
             main_section += """
-2. You should give an analysis to the current screen, and reflect on what has been done by looking at the history, then describe your step-by-step thoughts on how to achieve the task.
+5. You should give an analysis to the current screen, and reflect on what has been done by looking at the history, then describe your step-by-step thoughts on how to achieve the task.
 
 """
         else:
             main_section += """
-2. In <think> XML tags give an analysis to the current screen, and reflect on what has been done by looking at the history, then describe your step-by-step thoughts on how to achieve the task. In <output> XML tags put the next action prediction JSON.
+5. In <think> XML tags give an analysis to the current screen, and reflect on what has been done by looking at the history, then describe your step-by-step thoughts on how to achieve the task. In <output> XML tags put the next action prediction JSON.
 
 """
         main_section += """
-3. Attach the next action prediction in the "Next Action".
-4. You should not include other actions, such as keyboard shortcuts.
-5. When the task is completed, don't complete additional actions. You should say "Next Action": "None" in the json field.
-6. The tasks involve buying multiple products or navigating through multiple pages. You should break it into subgoals and complete each subgoal one by one in the order of the instructions.
-7. avoid choosing the same action/elements multiple times in a row, if it happens, reflect to yourself, what may have gone wrong, and predict a different action.
-8. If you are prompted with login information page or captcha page, or you think it need user's permission to do the next action, you should say "Next Action": "None" in the json field.
+6. Attach the next action prediction in the "Next Action".
+7. You should not include other actions, such as keyboard shortcuts.
+8. When the task is completed, don't complete additional actions. You should say "Next Action": "None" in the json field.
+9. The tasks involve buying multiple products or navigating through multiple pages. You should break it into subgoals and complete each subgoal one by one in the order of the instructions.
+10. avoid choosing the same action/elements multiple times in a row, if it happens, reflect to yourself, what may have gone wrong, and predict a different action.
+11. If you are prompted with login information page or captcha page, or you think it need user's permission to do the next action, you should say "Next Action": "None" in the json field.
 """ 
 
         return main_section
