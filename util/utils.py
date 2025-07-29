@@ -21,14 +21,11 @@ import easyocr
 from paddleocr import PaddleOCR
 reader = easyocr.Reader(['ch_sim', 'en'])
 paddle_ocr = PaddleOCR(
-    lang='ch',  # other lang also available
-    use_angle_cls=False,
-    use_gpu=False,  # using cuda will conflict with pytorch in the same process
-    show_log=False,
-    max_batch_size=1024,
-    use_dilation=True,  # improves accuracy
-    det_db_score_mode='slow',  # improves accuracy
-    rec_batch_num=1024)
+    use_doc_orientation_classify=False,  # 3.1.0版本参数
+    use_doc_unwarping=False,            # 3.1.0版本参数
+    use_textline_orientation=False      # 3.1.0版本参数
+    # 移除lang参数，使用默认设置
+)
 import time
 import base64
 
@@ -305,7 +302,8 @@ def remove_overlap_new(boxes, iou_threshold, ocr_bbox=None):
                     else:
                         filtered_boxes.append({'type': 'icon', 'bbox': box1_elem['bbox'], 'interactivity': True, 'content': None, 'source':'box_yolo_content_yolo'})
             else:
-                filtered_boxes.append(box1)
+                # 当没有OCR数据时，也要保持字典结构
+                filtered_boxes.append({'type': 'icon', 'bbox': box1_elem['bbox'], 'interactivity': True, 'content': None, 'source':'box_yolo_content_yolo'})
     return filtered_boxes # torch.tensor(filtered_boxes)
 
 
@@ -429,8 +427,14 @@ def get_som_labeled_img(image_source: Union[str, Image.Image], model=None, BOX_T
         ocr_bbox=ocr_bbox.tolist()
     else:
         print('no ocr bbox!!!')
-        ocr_bbox = None
+        ocr_bbox = []  # 改为空列表而不是None
 
+    # 添加空值检查，确保ocr_bbox和ocr_text都不是None
+    if ocr_bbox is None:
+        ocr_bbox = []
+    if ocr_text is None:
+        ocr_text = []
+        
     ocr_bbox_elem = [{'type': 'text', 'bbox':box, 'interactivity':False, 'content':txt, 'source': 'box_ocr_content_ocr'} for box, txt in zip(ocr_bbox, ocr_text) if int_box_area(box, w, h) > 0] 
     xyxy_elem = [{'type': 'icon', 'bbox':box, 'interactivity':True, 'content':None} for box in xyxy.tolist() if int_box_area(box, w, h) > 0]
     filtered_boxes = remove_overlap_new(boxes=xyxy_elem, iou_threshold=iou_threshold, ocr_bbox=ocr_bbox_elem)
@@ -514,9 +518,61 @@ def check_ocr_box(image_source: Union[str, Image.Image], display_img = True, out
             text_threshold = 0.5
         else:
             text_threshold = easyocr_args['text_threshold']
-        result = paddle_ocr.ocr(image_np, cls=False)[0]
-        coord = [item[0] for item in result if item[1][1] > text_threshold]
-        text = [item[1][0] for item in result if item[1][1] > text_threshold]
+        
+        try:
+            # 使用PaddleOCR 3.1.0的新API，与测试代码保持一致
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_file:
+                # 保存高质量图片，与测试代码保持一致
+                image_source.save(tmp_file.name, quality=100, optimize=False)
+                result = paddle_ocr.predict(input=tmp_file.name)
+                os.unlink(tmp_file.name)
+                
+                print(f"🔍 OCR识别结果调试信息:")
+                for i, res in enumerate(result):
+                    print(f"  页面 {i}: {type(res)}")
+                    if hasattr(res, 'print'):
+                        res.print()
+                    else:
+                        print(f"  结果内容: {res}")
+                
+                # 处理新版本返回结果
+                coord = []
+                text = []
+                
+                if result and len(result) > 0:
+                    # result是一个列表，每个元素对应一页
+                    page_result = result[0]  # 取第一页
+                    
+                    # 从3.1.0版本的结果结构中提取数据
+                    if 'dt_polys' in page_result and 'rec_texts' in page_result and 'rec_scores' in page_result:
+                        dt_polys = page_result['dt_polys']
+                        rec_texts = page_result['rec_texts']
+                        rec_scores = page_result['rec_scores']
+                        
+                        for i, (poly, rec_text, score) in enumerate(zip(dt_polys, rec_texts, rec_scores)):
+                            if score > text_threshold:
+                                # 将numpy数组转换为标准格式的四个点坐标
+                                points = poly.tolist()  # 转换为列表格式
+                                coord.append(points)
+                                text.append(rec_text)
+                    
+        except Exception as e:
+            print(f"PaddleOCR 3.1.0处理出错，尝试旧版本API: {e}")
+            # 降级到旧版本API
+            try:
+                # PaddleOCR 3.1.0可能不支持cls参数，先尝试不带参数
+                result = paddle_ocr.ocr(image_np)
+                if result and result[0]:
+                    coord = [item[0] for item in result[0] if item[1][1] > text_threshold]
+                    text = [item[1][0] for item in result[0] if item[1][1] > text_threshold]
+                else:
+                    coord = []
+                    text = []
+            except Exception as e2:
+                print(f"降级到旧版本API也失败: {e2}")
+                coord = []
+                text = []
     else:  # EasyOCR
         if easyocr_args is None:
             easyocr_args = {}
