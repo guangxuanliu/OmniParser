@@ -1,7 +1,7 @@
 ARG VERSION_ARG="latest"
 FROM scratch AS build-amd64
 
-COPY --from=qemux/qemu-docker:6.08 / /
+COPY --from=qemux/qemu:6.18 / /
 
 ARG DEBCONF_NOWARNINGS="yes"
 ARG DEBIAN_FRONTEND="noninteractive"
@@ -10,11 +10,12 @@ ARG DEBCONF_NONINTERACTIVE_SEEN="true"
 RUN set -eu && \
     apt-get update && \
     apt-get --no-install-recommends -y install \
+        python3 \
         bc \
         jq \
         curl \
         7zip \
-        wsdd \
+        wsdd2 \
         samba \
         xz-utils \
         wimtools \
