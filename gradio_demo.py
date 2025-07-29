@@ -1,11 +1,15 @@
-from typing import Optional
+import os
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
+# 设置自动信任远程代码
+os.environ['TRUST_REMOTE_CODE'] = 'true'
 
+from typing import Optional
 import gradio as gr
 import numpy as np
 import torch
 from PIL import Image
 import io
-
 
 import base64, os
 from util.utils import check_ocr_box, get_yolo_model, get_caption_model_processor, get_som_labeled_img
@@ -13,8 +17,10 @@ import torch
 from PIL import Image
 
 yolo_model = get_yolo_model(model_path='weights/icon_detect/model.pt')
-caption_model_processor = get_caption_model_processor(model_name="florence2", model_name_or_path="weights/icon_caption_florence")
-# caption_model_processor = get_caption_model_processor(model_name="blip2", model_name_or_path="weights/icon_caption_blip2")
+caption_model_processor = get_caption_model_processor(
+    model_name="florence2", 
+    model_name_or_path="weights/icon_caption_florence"
+)
 
 MARKDOWN = """
 # OmniParser for Pure Vision Based General GUI Agent 🔥
@@ -36,6 +42,7 @@ def process(
     image_input,
     box_threshold,
     iou_threshold,
+    text_threshold,
     use_paddleocr,
     imgsz
 ) -> Optional[Image.Image]:
@@ -47,15 +54,20 @@ def process(
         'text_padding': max(int(3 * box_overlay_ratio), 1),
         'thickness': max(int(3 * box_overlay_ratio), 1),
     }
-    # import pdb; pdb.set_trace()
 
-    ocr_bbox_rslt, is_goal_filtered = check_ocr_box(image_input, display_img = False, output_bb_format='xyxy', goal_filtering=None, easyocr_args={'paragraph': False, 'text_threshold':0.9}, use_paddleocr=use_paddleocr)
+    ocr_bbox_rslt, is_goal_filtered = check_ocr_box(image_input, display_img = False, output_bb_format='xyxy', goal_filtering=None, easyocr_args={'paragraph': False, 'text_threshold':text_threshold}, use_paddleocr=use_paddleocr)
     text, ocr_bbox = ocr_bbox_rslt
+    
+    # 添加空值检查
+    if text is None:
+        text = []
+    if ocr_bbox is None:
+        ocr_bbox = []
+    
     dino_labled_img, label_coordinates, parsed_content_list = get_som_labeled_img(image_input, yolo_model, BOX_TRESHOLD = box_threshold, output_coord_in_ratio=True, ocr_bbox=ocr_bbox,draw_bbox_config=draw_bbox_config, caption_model_processor=caption_model_processor, ocr_text=text,iou_threshold=iou_threshold, imgsz=imgsz,)  
     image = Image.open(io.BytesIO(base64.b64decode(dino_labled_img)))
     print('finish processing')
     parsed_content_list = '\n'.join([f'icon {i}: ' + str(v) for i,v in enumerate(parsed_content_list)])
-    # parsed_content_list = str(parsed_content_list)
     return image, str(parsed_content_list)
 
 with gr.Blocks() as demo:
@@ -66,10 +78,13 @@ with gr.Blocks() as demo:
                 type='pil', label='Upload image')
             # set the threshold for removing the bounding boxes with low confidence, default is 0.05
             box_threshold_component = gr.Slider(
-                label='Box Threshold', minimum=0.01, maximum=1.0, step=0.01, value=0.05)
+                label='Box Threshold', minimum=0.01, maximum=1.0, step=0.01, value=0.02)
             # set the threshold for removing the bounding boxes with large overlap, default is 0.1
             iou_threshold_component = gr.Slider(
-                label='IOU Threshold', minimum=0.01, maximum=1.0, step=0.01, value=0.1)
+                label='IOU Threshold', minimum=0.01, maximum=1.0, step=0.01, value=0.05)
+            # add text threshold slider for OCR confidence filtering
+            text_threshold_component = gr.Slider(
+                label='Text Threshold', minimum=0.1, maximum=1.0, step=0.05, value=0.8)
             use_paddleocr_component = gr.Checkbox(
                 label='Use PaddleOCR', value=True)
             imgsz_component = gr.Slider(
@@ -86,6 +101,7 @@ with gr.Blocks() as demo:
             image_input_component,
             box_threshold_component,
             iou_threshold_component,
+            text_threshold_component,
             use_paddleocr_component,
             imgsz_component
         ],
