@@ -528,14 +528,6 @@ def check_ocr_box(image_source: Union[str, Image.Image], display_img = True, out
                 result = paddle_ocr.predict(input=tmp_file.name)
                 os.unlink(tmp_file.name)
                 
-                print(f"🔍 OCR识别结果调试信息:")
-                for i, res in enumerate(result):
-                    print(f"  页面 {i}: {type(res)}")
-                    if hasattr(res, 'print'):
-                        res.print()
-                    else:
-                        print(f"  结果内容: {res}")
-                
                 # 处理新版本返回结果
                 coord = []
                 text = []
