@@ -84,7 +84,7 @@ with gr.Blocks() as demo:
                 label='IOU Threshold', minimum=0.01, maximum=1.0, step=0.01, value=0.05)
             # add text threshold slider for OCR confidence filtering
             text_threshold_component = gr.Slider(
-                label='Text Threshold', minimum=0.1, maximum=1.0, step=0.05, value=0.8)
+                label='Text Threshold', minimum=0.1, maximum=1.0, step=0.05, value=0.5)
             use_paddleocr_component = gr.Checkbox(
                 label='Use PaddleOCR', value=True)
             imgsz_component = gr.Slider(
