@@ -5,8 +5,12 @@ import requests
 from .utils import is_image_path, encode_image
 
 def run_oai_interleaved(messages: list, system: str, model_name: str, api_key: str, max_tokens=256, temperature=0, provider_base_url: str = "https://api.openai.com/v1"):    
-    headers = {"Content-Type": "application/json",
-               "Authorization": f"Bearer {api_key}"}
+    # For local Ollama deployment, we don't need API key
+    if "localhost" in provider_base_url or "127.0.0.1" in provider_base_url:
+        headers = {"Content-Type": "application/json"}
+    else:
+        headers = {"Content-Type": "application/json",
+                   "Authorization": f"Bearer {api_key}"}
     final_messages = [{"role": "system", "content": system}]
 
     if type(messages) == list:

@@ -45,6 +45,8 @@ class VLMAgent:
             self.model = "deepseek-r1-distill-llama-70b"
         elif model == "omniparser + qwen2.5vl":
             self.model = "qwen2.5-vl-72b-instruct"
+        elif model == "omniparser + qwen2.5vl-local":
+            self.model = "qwen2.5-vl:3b"  # Ollama model name
         elif model == "omniparser + o1":
             self.model = "o1"
         elif model == "omniparser + o3-mini":
@@ -120,7 +122,7 @@ class VLMAgent:
             print(f"groq token usage: {token_usage}")
             self.total_token_usage += token_usage
             self.total_cost += (token_usage * 0.99 / 1000000)
-        elif "qwen" in self.model:
+        elif "qwen" in self.model and self.provider != "local":
             vlm_response, token_usage = run_oai_interleaved(
                 messages=planner_messages,
                 system=system,
@@ -133,6 +135,20 @@ class VLMAgent:
             print(f"qwen token usage: {token_usage}")
             self.total_token_usage += token_usage
             self.total_cost += (token_usage * 2.2 / 1000000)  # https://help.aliyun.com/zh/model-studio/getting-started/models?spm=a2c4g.11186623.0.0.74b04823CGnPv7#fe96cfb1a422a
+        elif self.provider == "local":
+            # Local Ollama deployment
+            vlm_response, token_usage = run_oai_interleaved(
+                messages=planner_messages,
+                system=system,
+                model_name=self.model,
+                api_key="dummy",  # Ollama doesn't need API key
+                max_tokens=min(2048, self.max_tokens),
+                provider_base_url="http://localhost:11434/v1",
+                temperature=0,
+            )
+            print(f"local model token usage: {token_usage}")
+            self.total_token_usage += token_usage
+            # No cost for local deployment
         else:
             raise ValueError(f"Model {self.model} not supported")
         latency_vlm = time.time() - start
