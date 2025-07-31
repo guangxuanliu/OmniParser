@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Debug OmniParser Server",
+            "type": "python",
+            "request": "launch",
+            "module": "omniparserserver", // 这部分保持不变
+            "args": [],
+            "console": "integratedTerminal",
+
+            // 核心修正：将工作目录设置为你手动cd进入的那个目录！
+            "cwd": "${workspaceFolder}/omnitool/omniparserserver",
+
+            "justMyCode": true
+        }
+    ]
+}
