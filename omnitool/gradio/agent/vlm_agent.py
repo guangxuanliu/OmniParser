@@ -46,7 +46,7 @@ class VLMAgent:
         elif model == "omniparser + qwen2.5vl":
             self.model = "qwen2.5-vl-72b-instruct"
         elif model == "omniparser + qwen2.5vl-local":
-            self.model = "qwen2.5-vl:3b"  # Ollama model name
+            self.model = "qwen2.5vl:3b"  # 修正为实际的 Ollama 模型名称（无连字符）
         elif model == "omniparser + o1":
             self.model = "o1"
         elif model == "omniparser + o3-mini":

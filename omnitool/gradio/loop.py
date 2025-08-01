@@ -40,7 +40,7 @@ PROVIDER_TO_DEFAULT_MODEL_NAME: dict[APIProvider, str] = {
     APIProvider.OPENAI: "gpt-4o",
     APIProvider.GROQ: "deepseek-r1-distill-llama-70b",
     APIProvider.DASHSCOPE: "qwen2.5-vl-72b-instruct",
-    APIProvider.LOCAL: "qwen2.5-vl:7b",
+    APIProvider.LOCAL: "qwen2.5vl:3b",
 }
 
 def sampling_loop_sync(

@@ -82,7 +82,7 @@ class VLMOrchestratedAgent:
         elif model == "omniparser + qwen2.5vl" or model == "omniparser + qwen2.5vl-orchestrated":
             self.model = "qwen2.5-vl-72b-instruct"
         elif model == "omniparser + qwen2.5vl-local" or model == "omniparser + qwen2.5vl-local-orchestrated":
-            self.model = "qwen2.5-vl:3b"  # Ollama model name
+            self.model = "qwen2.5vl:3b"  # 修正为实际的 Ollama 模型名称（无连字符）
         elif model == "omniparser + o1" or model == "omniparser + o1-orchestrated":
             self.model = "o1"
         elif model == "omniparser + o3-mini" or model == "omniparser + o3-mini-orchestrated":
