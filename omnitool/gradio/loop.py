@@ -28,6 +28,9 @@ class APIProvider(StrEnum):
     BEDROCK = "bedrock"
     VERTEX = "vertex"
     OPENAI = "openai"
+    GROQ = "groq"
+    DASHSCOPE = "dashscope"
+    LOCAL = "local"
 
 
 PROVIDER_TO_DEFAULT_MODEL_NAME: dict[APIProvider, str] = {
@@ -35,6 +38,9 @@ PROVIDER_TO_DEFAULT_MODEL_NAME: dict[APIProvider, str] = {
     APIProvider.BEDROCK: "anthropic.claude-3-5-sonnet-20241022-v2:0",
     APIProvider.VERTEX: "claude-3-5-sonnet-v2@20241022",
     APIProvider.OPENAI: "gpt-4o",
+    APIProvider.GROQ: "deepseek-r1-distill-llama-70b",
+    APIProvider.DASHSCOPE: "qwen2.5-vl-72b-instruct",
+    APIProvider.LOCAL: "qwen2.5-vl:7b",
 }
 
 def sampling_loop_sync(
@@ -115,7 +121,7 @@ def sampling_loop_sync(
 
             messages.append({"content": tool_result_content, "role": "user"})
     
-    elif model in set(["omniparser + gpt-4o", "omniparser + o1", "omniparser + o3-mini", "omniparser + R1", "omniparser + qwen2.5vl", "omniparser + gpt-4o-orchestrated", "omniparser + o1-orchestrated", "omniparser + o3-mini-orchestrated", "omniparser + R1-orchestrated", "omniparser + qwen2.5vl-orchestrated"]):
+    elif model in set(["omniparser + gpt-4o", "omniparser + o1", "omniparser + o3-mini", "omniparser + R1", "omniparser + qwen2.5vl", "omniparser + qwen2.5vl-local", "omniparser + gpt-4o-orchestrated", "omniparser + o1-orchestrated", "omniparser + o3-mini-orchestrated", "omniparser + R1-orchestrated", "omniparser + qwen2.5vl-orchestrated", "omniparser + qwen2.5vl-local-orchestrated"]):
         while True:
             parsed_screen = omniparser_client()
             tools_use_needed, vlm_response_json = actor(messages=messages, parsed_screen=parsed_screen)

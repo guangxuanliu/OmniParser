@@ -199,7 +199,7 @@ def valid_params(user_input, state):
         except RequestException as e:
             errors.append(f"{server_name} is not responding")
     
-    if not state["api_key"].strip():
+    if not state["api_key"].strip() and state.get("provider") != "local":
         errors.append("LLM API Key is not set")
 
     if not user_input:
@@ -358,9 +358,9 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
             provider_choices = [option.value for option in APIProvider if option.value != "openai"]
         elif model_selection in set(["omniparser + gpt-4o", "omniparser + o1", "omniparser + o3-mini", "omniparser + gpt-4o-orchestrated", "omniparser + o1-orchestrated", "omniparser + o3-mini-orchestrated"]):
             provider_choices = ["openai"]
-        elif model_selection == "omniparser + R1":
+        elif model_selection in set(["omniparser + R1", "omniparser + R1-orchestrated"]):
             provider_choices = ["groq"]
-        elif model_selection == "omniparser + qwen2.5vl":
+        elif model_selection in set(["omniparser + qwen2.5vl", "omniparser + qwen2.5vl-orchestrated"]):
             provider_choices = ["dashscope"]
         elif model_selection in set(["omniparser + qwen2.5vl-local", "omniparser + qwen2.5vl-local-orchestrated"]):
             provider_choices = ["local"]
@@ -369,7 +369,10 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
         default_provider_value = provider_choices[0]
 
         provider_interactive = len(provider_choices) > 1
-        api_key_placeholder = f"{default_provider_value.title()} API Key"
+        if default_provider_value == "local":
+            api_key_placeholder = "No API key needed for local deployment"
+        else:
+            api_key_placeholder = f"{default_provider_value.title()} API Key"
 
         # Update state
         state["provider"] = default_provider_value
@@ -397,8 +400,13 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
         state["api_key"] = state.get(f"{provider_value}_api_key", "")
         
         # Calls to update other components UI
+        if provider_value == "local":
+            placeholder = "No API key needed for local deployment"
+        else:
+            placeholder = f"{provider_value.title()} API Key"
+            
         api_key_update = gr.update(
-            placeholder=f"{provider_value.title()} API Key",
+            placeholder=placeholder,
             value=state["api_key"]
         )
         return api_key_update

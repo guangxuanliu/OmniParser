@@ -62,5 +62,6 @@ def run_oai_interleaved(messages: list, system: str, model_name: str, api_key: s
         token_usage = int(response.json()['usage']['total_tokens'])
         return text, token_usage
     except Exception as e:
-        print(f"Error in interleaved openAI: {e}. This may due to your invalid API key. Please check the response: {response.json()} ")
-        return response.json()
+        error_msg = f"Error in interleaved openAI: {e}. This may due to your invalid API key. Please check the response: {response.json()}"
+        print(error_msg)
+        return error_msg, 0  # Return error message and 0 token usage
