@@ -51,9 +51,9 @@ def setup_state(state):
     if "messages" not in state:
         state["messages"] = []
     if "model" not in state:
-        state["model"] = "omniparser + gpt-4o"
+        state["model"] = "omniparser + qwen2.5vl-local"  # 默认选择本地模型
     if "provider" not in state:
-        state["provider"] = "openai"
+        state["provider"] = "local"  # 默认使用本地提供商
     if "openai_api_key" not in state:  # Fetch API keys from environment variables
         state["openai_api_key"] = os.getenv("OPENAI_API_KEY", "")
     if "anthropic_api_key" not in state:
@@ -303,7 +303,7 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
                 model = gr.Dropdown(
                     label="Model",
                     choices=["omniparser + gpt-4o", "omniparser + o1", "omniparser + o3-mini", "omniparser + R1", "omniparser + qwen2.5vl", "omniparser + qwen2.5vl-local", "claude-3-5-sonnet-20241022", "omniparser + gpt-4o-orchestrated", "omniparser + o1-orchestrated", "omniparser + o3-mini-orchestrated", "omniparser + R1-orchestrated", "omniparser + qwen2.5vl-orchestrated", "omniparser + qwen2.5vl-local-orchestrated"],
-                    value="omniparser + gpt-4o",
+                    value="omniparser + qwen2.5vl-local",  # 默认选择本地模型
                     interactive=True,
                 )
             with gr.Column():
@@ -320,7 +320,7 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
                 provider = gr.Dropdown(
                     label="API Provider",
                     choices=[option.value for option in APIProvider],
-                    value="openai",
+                    value="local",  # 默认选择本地提供商
                     interactive=False,
                 )
             with gr.Column(2):
@@ -328,7 +328,7 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
                     label="API Key",
                     type="password",
                     value=state.value.get("api_key", ""),
-                    placeholder="Paste your API key here",
+                    placeholder="No API key needed for local deployment",  # 默认本地部署的占位符
                     interactive=True,
                 )
 
