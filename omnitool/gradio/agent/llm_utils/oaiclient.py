@@ -25,15 +25,10 @@ def run_oai_interleaved(messages: list, system: str, model_name: str, api_key: s
                 for cnt in item["content"]:
                     if isinstance(cnt, str):
                         if is_image_path(cnt) and 'o3-mini' not in model_name:
-                            # 对于本地 Ollama 模型，暂时跳过图片以避免崩溃
-                            if is_local_ollama:
-                                print(f"跳过图片处理 (本地模型): {cnt}")
-                                # 添加一个描述文本来替代图片
-                                content = {"type": "text", "text": f"[图片文件: {cnt}]"}
-                            else:
-                                # 在线版本正常处理图片
-                                base64_image = encode_image(cnt)
-                                content = {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                            # 统一处理图片，无论是本地还是在线模型
+                            base64_image = encode_image(cnt)
+                            content = {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                            print(f"处理图片: {cnt}")
                         else:
                             content = {"type": "text", "text": cnt}
                     else:
