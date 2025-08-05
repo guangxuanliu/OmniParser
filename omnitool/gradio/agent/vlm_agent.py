@@ -20,13 +20,48 @@ import re
 OUTPUT_DIR = "./tmp/outputs"
 
 def extract_data(input_string, data_type):
-    # Regular expression to extract content starting from '```python' until the end if there are no closing backticks
-    pattern = f"```{data_type}" + r"(.*?)(```|$)"
-    # Extract content
-    # re.DOTALL allows '.' to match newlines as well
-    matches = re.findall(pattern, input_string, re.DOTALL)
-    # Return the first match if exists, trimming whitespace and ignoring potential closing backticks
-    return matches[0][0].strip() if matches else input_string
+    """
+    提取代码块中的内容，支持多种格式
+    """
+    if not input_string or not isinstance(input_string, str):
+        return ""
+    
+    # 尝试多种模式来提取JSON内容
+    patterns = [
+        # 标准的代码块格式
+        f"```{data_type}\\s*(.*?)\\s*```",
+        # 没有语言标识的代码块
+        f"```\\s*({{.*?}})\\s*```",
+        # 仅有开始标记没有结束标记
+        f"```{data_type}\\s*(.*?)$",
+        # 直接的JSON内容（以大括号开始和结束）
+        r"(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})",
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, input_string, re.DOTALL | re.IGNORECASE)
+        if matches:
+            # 返回第一个匹配，去除前后空白
+            content = matches[0]
+            if isinstance(content, tuple):
+                content = content[0]
+            return content.strip()
+    
+    # 如果没有找到代码块，尝试查找JSON对象
+    # 查找第一个完整的JSON对象
+    json_start = input_string.find('{')
+    if json_start != -1:
+        brace_count = 0
+        for i, char in enumerate(input_string[json_start:], json_start):
+            if char == '{':
+                brace_count += 1
+            elif char == '}':
+                brace_count -= 1
+                if brace_count == 0:
+                    return input_string[json_start:i+1].strip()
+    
+    # 如果都没找到，返回原字符串
+    return input_string.strip()
 
 class VLMAgent:
     def __init__(
@@ -176,32 +211,75 @@ class VLMAgent:
         if self.print_usage:
             print(f"Total token so far: {self.total_token_usage}. Total cost so far: $USD{self.total_cost:.5f}")
         
+        print(f"🔍 Raw VLM Response:\n{vlm_response}")
+        print("="*50)
+        
         vlm_response_json = extract_data(vlm_response, "json")
+        print(f"📝 Extracted JSON content:\n{vlm_response_json}")
+        print("="*50)
         
         # Clean up common JSON formatting issues
         vlm_response_json = vlm_response_json.strip()
+        
+        # Remove markdown code block markers if present
+        if vlm_response_json.startswith('```json'):
+            vlm_response_json = vlm_response_json[7:]
+        if vlm_response_json.startswith('```'):
+            vlm_response_json = vlm_response_json[3:]
+        if vlm_response_json.endswith('```'):
+            vlm_response_json = vlm_response_json[:-3]
+        
+        vlm_response_json = vlm_response_json.strip()
+        
         # Remove trailing commas before closing braces/brackets
         import re
         vlm_response_json = re.sub(r',(\s*[}\]])', r'\1', vlm_response_json)
         
-        try:
-            vlm_response_json = json.loads(vlm_response_json)
-        except json.JSONDecodeError as e:
-            print(f"JSON parsing error: {e}")
-            print(f"Raw JSON content: {vlm_response_json}")
-            # Try to fix common issues and parse again
+        # If the response is empty or just whitespace, create a default response
+        if not vlm_response_json or vlm_response_json.isspace():
+            print("⚠️  Empty JSON content detected, using default response")
+            vlm_response_json = {
+                "Reasoning": "Empty response received, taking screenshot to assess current state",
+                "Next Action": "screenshot"
+            }
+        else:
             try:
-                # Remove any trailing commas after the last property
-                vlm_response_json = re.sub(r',(\s*)(?=})', r'\1', vlm_response_json)
                 vlm_response_json = json.loads(vlm_response_json)
-                print("Successfully parsed JSON after cleanup")
-            except json.JSONDecodeError as e2:
-                print(f"Failed to parse JSON even after cleanup: {e2}")
-                # Create a default response to continue execution
-                vlm_response_json = {
-                    "Reasoning": "JSON parsing failed, taking default action",
-                    "Next Action": "screenshot"
-                }
+                print("✅ JSON parsing successful")
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON parsing error: {e}")
+                print(f"🔍 Problematic JSON content: '{vlm_response_json}'")
+                print(f"📏 Content length: {len(vlm_response_json)}")
+                
+                # Try to fix common issues and parse again
+                try:
+                    # Remove any trailing commas after the last property
+                    cleaned_json = re.sub(r',(\s*)(?=})', r'\1', vlm_response_json)
+                    # Remove any leading/trailing non-JSON characters
+                    cleaned_json = re.sub(r'^[^{]*({.*})[^}]*$', r'\1', cleaned_json, flags=re.DOTALL)
+                    vlm_response_json = json.loads(cleaned_json)
+                    print("✅ JSON parsing successful after cleanup")
+                except json.JSONDecodeError as e2:
+                    print(f"❌ Failed to parse JSON even after cleanup: {e2}")
+                    print(f"🔍 Final cleaned content: '{cleaned_json if 'cleaned_json' in locals() else vlm_response_json}'")
+                    
+                    # Analyze the content to provide better error information
+                    if len(vlm_response_json) == 0:
+                        error_reason = "Empty response"
+                    elif not vlm_response_json.strip().startswith('{'):
+                        error_reason = "Response doesn't start with '{'"
+                    elif not vlm_response_json.strip().endswith('}'):
+                        error_reason = "Response doesn't end with '}'"
+                    else:
+                        error_reason = "Invalid JSON syntax"
+                    
+                    print(f"🎯 Error analysis: {error_reason}")
+                    
+                    # Create a default response to continue execution
+                    vlm_response_json = {
+                        "Reasoning": f"JSON parsing failed ({error_reason}), taking screenshot to assess current state",
+                        "Next Action": "screenshot"
+                    }
 
         img_to_show_base64 = parsed_screen["som_image_base64"]
         if "Box ID" in vlm_response_json:
@@ -299,25 +377,36 @@ Output format:
 }}
 ```
 
-CRITICAL: Your JSON response MUST be valid JSON format. Do NOT include trailing commas after the last property. For example:
+CRITICAL JSON FORMAT REQUIREMENTS:
+1. Your response MUST be valid JSON format wrapped in ```json code blocks
+2. Do NOT include trailing commas after the last property
+3. Do NOT include comments (//) in the JSON
+4. Use double quotes for all strings
+5. Ensure all braces and brackets are properly matched
+6. Do NOT include any text before or after the JSON code block
+7. The JSON must be parseable by standard JSON parsers
+
+EXAMPLES:
 - CORRECT: {{"Box ID": 20}}
 - INCORRECT: {{"Box ID": 20,}}
+- CORRECT: {{"Next Action": "left_click"}}
+- INCORRECT: {{"Next Action": 'left_click'}}
 
 One Example:
 ```json
 {{  
     "Reasoning": "The current screen shows google result of amazon, in previous action I have searched amazon on google. Then I need to click on the first search results to go to amazon.com.",
     "Next Action": "left_click",
-    "Box ID": m
+    "Box ID": 1
 }}
 ```
 
 Another Example:
 ```json
 {{
-    "Reasoning": "The current screen shows the front page of amazon. There is no previous action. Therefore I need to type "Apple watch" in the search bar.",
+    "Reasoning": "The current screen shows the front page of amazon. There is no previous action. Therefore I need to type Apple watch in the search bar.",
     "Next Action": "type",
-    "Box ID": n,
+    "Box ID": 5,
     "value": "Apple watch"
 }}
 ```
@@ -325,8 +414,8 @@ Another Example:
 Another Example:
 ```json
 {{
-    "Reasoning": "The current screen does not show 'submit' button, I need to scroll down to see if the button is available.",
-    "Next Action": "scroll_down",
+    "Reasoning": "The current screen does not show submit button, I need to scroll down to see if the button is available.",
+    "Next Action": "scroll_down"
 }}
 ```
 

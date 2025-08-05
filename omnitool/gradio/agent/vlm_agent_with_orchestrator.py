@@ -55,13 +55,48 @@ Please output an answer in pure JSON format according to the following schema. T
 """
 
 def extract_data(input_string, data_type):
-    # Regular expression to extract content starting from '```python' until the end if there are no closing backticks
-    pattern = f"```{data_type}" + r"(.*?)(```|$)"
-    # Extract content
-    # re.DOTALL allows '.' to match newlines as well
-    matches = re.findall(pattern, input_string, re.DOTALL)
-    # Return the first match if exists, trimming whitespace and ignoring potential closing backticks
-    return matches[0][0].strip() if matches else input_string
+    """
+    提取代码块中的内容，支持多种格式
+    """
+    if not input_string or not isinstance(input_string, str):
+        return ""
+    
+    # 尝试多种模式来提取JSON内容
+    patterns = [
+        # 标准的代码块格式
+        f"```{data_type}\\s*(.*?)\\s*```",
+        # 没有语言标识的代码块
+        f"```\\s*({{.*?}})\\s*```",
+        # 仅有开始标记没有结束标记
+        f"```{data_type}\\s*(.*?)$",
+        # 直接的JSON内容（以大括号开始和结束）
+        r"(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})",
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, input_string, re.DOTALL | re.IGNORECASE)
+        if matches:
+            # 返回第一个匹配，去除前后空白
+            content = matches[0]
+            if isinstance(content, tuple):
+                content = content[0]
+            return content.strip()
+    
+    # 如果没有找到代码块，尝试查找JSON对象
+    # 查找第一个完整的JSON对象
+    json_start = input_string.find('{')
+    if json_start != -1:
+        brace_count = 0
+        for i, char in enumerate(input_string[json_start:], json_start):
+            if char == '{':
+                brace_count += 1
+            elif char == '}':
+                brace_count -= 1
+                if brace_count == 0:
+                    return input_string[json_start:i+1].strip()
+    
+    # 如果都没找到，返回原字符串
+    return input_string.strip()
 
 class VLMOrchestratedAgent:
     def __init__(
