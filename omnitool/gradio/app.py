@@ -271,6 +271,9 @@ def get_header_image_base64():
 with gr.Blocks(theme=gr.themes.Default()) as demo:
     gr.HTML("""
         <style>
+        .gradio-container {
+            max-width: 95% !important;
+        }
         .no-padding {
             padding: 0 !important;
         }
@@ -286,15 +289,15 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
     
     setup_state(state.value)
     
-    header_image = get_header_image_base64()
-    if header_image:
-        gr.HTML(f'<img src="{header_image}" alt="OmniTool Header" width="100%">', elem_classes="no-padding")
-        gr.HTML('<h1 style="text-align: center; font-weight: normal;">Omni<span style="font-weight: bold;">Tool</span></h1>')
-    else:
-        gr.Markdown("# OmniTool")
+    # header_image = get_header_image_base64()
+    # if header_image:
+    #     gr.HTML(f'<img src="{header_image}" alt="OmniTool Header" width="100%">', elem_classes="no-padding")
+    #     gr.HTML('<h1 style="text-align: center; font-weight: normal;">Omni<span style="font-weight: bold;">Tool</span></h1>')
+    # else:
+    #     gr.Markdown("# OmniTool")
 
-    if not os.getenv("HIDE_WARNING", False):
-        gr.Markdown(INTRO_TEXT, elem_classes="markdown-text")
+    # if not os.getenv("HIDE_WARNING", False):
+    #     gr.Markdown(INTRO_TEXT, elem_classes="markdown-text")
 
 
     with gr.Accordion("Settings", open=True): 
@@ -341,11 +344,11 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
             stop_button = gr.Button(value="Stop", variant="secondary")
 
     with gr.Row():
-        with gr.Column(scale=2):
-            chatbot = gr.Chatbot(label="Chatbot History", autoscroll=True, height=580)
         with gr.Column(scale=3):
+            chatbot = gr.Chatbot(label="Chatbot History", autoscroll=True, height=760)
+        with gr.Column(scale=7):
             iframe = gr.HTML(
-                f'<iframe src="http://{args.windows_host_url}/vnc.html?view_only=1&autoconnect=1&resize=scale" width="100%" height="580" allow="fullscreen"></iframe>',
+                f'<iframe src="http://{args.windows_host_url}/vnc.html?view_only=1&autoconnect=1&resize=scale" width="100%" height="760" allow="fullscreen"></iframe>',
                 container=False,
                 elem_classes="no-padding"
             )
