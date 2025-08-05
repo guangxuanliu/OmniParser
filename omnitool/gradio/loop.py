@@ -31,6 +31,7 @@ class APIProvider(StrEnum):
     GROQ = "groq"
     DASHSCOPE = "dashscope"
     LOCAL = "local"
+    GEMINI = "gemini"
 
 
 PROVIDER_TO_DEFAULT_MODEL_NAME: dict[APIProvider, str] = {
@@ -41,6 +42,7 @@ PROVIDER_TO_DEFAULT_MODEL_NAME: dict[APIProvider, str] = {
     APIProvider.GROQ: "deepseek-r1-distill-llama-70b",
     APIProvider.DASHSCOPE: "qwen2.5-vl-72b-instruct",
     APIProvider.LOCAL: "qwen2.5vl:3b",
+    APIProvider.GEMINI: "gemini-2.5-flash",
 }
 
 def sampling_loop_sync(
@@ -72,7 +74,7 @@ def sampling_loop_sync(
             max_tokens=max_tokens,
             only_n_most_recent_images=only_n_most_recent_images
         )
-    elif model in set(["omniparser + gpt-4o", "omniparser + o1", "omniparser + o3-mini", "omniparser + R1", "omniparser + qwen2.5vl", "omniparser + qwen2.5vl-local"]):
+    elif model in set(["omniparser + gpt-4o", "omniparser + o1", "omniparser + o3-mini", "omniparser + R1", "omniparser + qwen2.5vl", "omniparser + qwen2.5vl-local", "omniparser + gemini-2.5-flash"]):
         actor = VLMAgent(
             model=model,
             provider=provider,
@@ -82,7 +84,7 @@ def sampling_loop_sync(
             max_tokens=max_tokens,
             only_n_most_recent_images=only_n_most_recent_images
         )
-    elif model in set(["omniparser + gpt-4o-orchestrated", "omniparser + o1-orchestrated", "omniparser + o3-mini-orchestrated", "omniparser + R1-orchestrated", "omniparser + qwen2.5vl-orchestrated", "omniparser + qwen2.5vl-local-orchestrated"]):
+    elif model in set(["omniparser + gpt-4o-orchestrated", "omniparser + o1-orchestrated", "omniparser + o3-mini-orchestrated", "omniparser + R1-orchestrated", "omniparser + qwen2.5vl-orchestrated", "omniparser + qwen2.5vl-local-orchestrated", "omniparser + gemini-2.5-flash-orchestrated"]):
         actor = VLMOrchestratedAgent(
             model=model,
             provider=provider,
@@ -121,7 +123,7 @@ def sampling_loop_sync(
 
             messages.append({"content": tool_result_content, "role": "user"})
     
-    elif model in set(["omniparser + gpt-4o", "omniparser + o1", "omniparser + o3-mini", "omniparser + R1", "omniparser + qwen2.5vl", "omniparser + qwen2.5vl-local", "omniparser + gpt-4o-orchestrated", "omniparser + o1-orchestrated", "omniparser + o3-mini-orchestrated", "omniparser + R1-orchestrated", "omniparser + qwen2.5vl-orchestrated", "omniparser + qwen2.5vl-local-orchestrated"]):
+    elif model in set(["omniparser + gpt-4o", "omniparser + o1", "omniparser + o3-mini", "omniparser + R1", "omniparser + qwen2.5vl", "omniparser + qwen2.5vl-local", "omniparser + gemini-2.5-flash", "omniparser + gpt-4o-orchestrated", "omniparser + o1-orchestrated", "omniparser + o3-mini-orchestrated", "omniparser + R1-orchestrated", "omniparser + qwen2.5vl-orchestrated", "omniparser + qwen2.5vl-local-orchestrated", "omniparser + gemini-2.5-flash-orchestrated"]):
         while True:
             parsed_screen = omniparser_client()
             tools_use_needed, vlm_response_json = actor(messages=messages, parsed_screen=parsed_screen)

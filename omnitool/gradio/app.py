@@ -302,7 +302,7 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
             with gr.Column():
                 model = gr.Dropdown(
                     label="Model",
-                    choices=["omniparser + gpt-4o", "omniparser + o1", "omniparser + o3-mini", "omniparser + R1", "omniparser + qwen2.5vl", "omniparser + qwen2.5vl-local", "claude-3-5-sonnet-20241022", "omniparser + gpt-4o-orchestrated", "omniparser + o1-orchestrated", "omniparser + o3-mini-orchestrated", "omniparser + R1-orchestrated", "omniparser + qwen2.5vl-orchestrated", "omniparser + qwen2.5vl-local-orchestrated"],
+                    choices=["omniparser + gpt-4o", "omniparser + o1", "omniparser + o3-mini", "omniparser + R1", "omniparser + qwen2.5vl", "omniparser + qwen2.5vl-local", "omniparser + gemini-2.5-flash", "claude-3-5-sonnet-20241022", "omniparser + gpt-4o-orchestrated", "omniparser + o1-orchestrated", "omniparser + o3-mini-orchestrated", "omniparser + R1-orchestrated", "omniparser + qwen2.5vl-orchestrated", "omniparser + qwen2.5vl-local-orchestrated", "omniparser + gemini-2.5-flash-orchestrated"],
                     value="omniparser + qwen2.5vl-local",  # 默认选择本地模型
                     interactive=True,
                 )
@@ -364,6 +364,8 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
             provider_choices = ["dashscope"]
         elif model_selection in set(["omniparser + qwen2.5vl-local", "omniparser + qwen2.5vl-local-orchestrated"]):
             provider_choices = ["local"]
+        elif model_selection in set(["omniparser + gemini-2.5-flash", "omniparser + gemini-2.5-flash-orchestrated"]):
+            provider_choices = ["gemini"]
         else:
             provider_choices = [option.value for option in APIProvider]
         default_provider_value = provider_choices[0]
@@ -371,6 +373,8 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
         provider_interactive = len(provider_choices) > 1
         if default_provider_value == "local":
             api_key_placeholder = "No API key needed for local deployment"
+        elif default_provider_value == "gemini":
+            api_key_placeholder = "Gemini API Key"
         else:
             api_key_placeholder = f"{default_provider_value.title()} API Key"
 
@@ -402,6 +406,8 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
         # Calls to update other components UI
         if provider_value == "local":
             placeholder = "No API key needed for local deployment"
+        elif provider_value == "gemini":
+            placeholder = "Gemini API Key"
         else:
             placeholder = f"{provider_value.title()} API Key"
             
