@@ -351,6 +351,16 @@ You can only interact with the desktop GUI (no terminal or application menu acce
 You may be given some history plan and actions, this is the response from the previous loop.
 You should carefully consider your plan base on the task, screenshot, and history actions.
 
+CRITICAL - FRAME COMPARISON LOGIC:
+When you see multiple screenshots in the conversation history, you MUST compare the current screenshot with the previous one:
+1. If the previous action was "double_click", "left_click", or any action that should cause a UI change
+2. AND the current screenshot looks identical or very similar to the previous screenshot
+3. AND no visible loading indicators, new windows, or interface changes are apparent
+4. THEN you should use "wait" action to allow more time for the application/interface to respond
+5. You should wait up to 3-4 times maximum before concluding that the action failed
+
+This prevents executing the same action multiple times when the interface is simply slow to respond.
+
 Here is the list of all detected bounding boxes by IDs on the screen and their description:{screen_info}
 
 Your available "Next Action" only include:
@@ -370,8 +380,8 @@ Based on the visual information from the screenshot image and the detected bound
 Output format:
 ```json
 {{
-    "Reasoning": str, # describe what is in the current screen, taking into account the history, then describe your step-by-step thoughts on how to achieve the task, choose one action from available actions at a time.
-    "Next Action": "action_type, action description" | "None" # one action at a time, describe it in short and precisely. 
+    "Reasoning": str, # FIRST, compare the current screenshot with previous screenshots if available. If the previous action was double_click/left_click and the screen appears unchanged, consider using 'wait'. THEN describe what is in the current screen, taking into account the history, then describe your step-by-step thoughts on how to achieve the task, choose one action from available actions at a time.
+    "Next Action": "action_type, action description" | "None" # one action at a time, describe it in short and precisely. Use 'wait' if the interface appears unchanged after a UI action.
     "Box ID": n,
     "value": "xxx" # only provide value field if the action is type, else don't include value key
 }}
@@ -419,11 +429,21 @@ Another Example:
 }}
 ```
 
+FRAME COMPARISON Example:
+```json
+{{
+    "Reasoning": "Looking at the current screenshot and comparing it with the previous one, I can see they are nearly identical. In the previous action, I double-clicked on the MSTorque application icon, but the desktop still looks the same with no new windows or loading indicators visible. The application may be taking time to launch. I should wait for the application to fully load before proceeding.",
+    "Next Action": "wait"
+}}
+```
+
 IMPORTANT NOTES:
 1. You should only give a single action at a time.
 2. CRITICAL: When you see application icons on the Windows desktop (like Chrome, Firefox, File Explorer, etc.), you MUST use "double_click" to open them. Single clicking desktop icons will NOT open applications.
 3. Use "left_click" only for buttons, links, menu items, and other UI elements within applications.
 4. If you repeatedly try "left_click" on a desktop icon and it doesn't open, switch to "double_click" immediately.
+5. FRAME COMPARISON: Always compare the current screenshot with previous screenshots. If the interface appears unchanged after an action that should cause changes (like double_click, left_click), use "wait" to allow the interface to respond instead of repeating the action.
+6. TIMING AWARENESS: Windows applications, especially desktop software, can take several seconds to launch. Don't assume an action failed just because the interface hasn't changed immediately.
 
 """
         thinking_model = "r1" in self.model
@@ -444,6 +464,7 @@ IMPORTANT NOTES:
 9. The tasks involve buying multiple products or navigating through multiple pages. You should break it into subgoals and complete each subgoal one by one in the order of the instructions.
 10. avoid choosing the same action/elements multiple times in a row, if it happens, reflect to yourself, what may have gone wrong, and predict a different action.
 11. If you are prompted with login information page or captcha page, or you think it need user's permission to do the next action, you should say "Next Action": "None" in the json field.
+12. CRITICAL FRAME LOGIC: Before deciding on any action, always examine if there are previous screenshots available. If the current and previous screenshots look very similar/identical AND the previous action was supposed to cause a UI change (like double_click, left_click), then you should use "wait" action to give the interface more time to respond. This prevents duplicate actions and allows for proper application loading times.
 """ 
 
         return main_section
