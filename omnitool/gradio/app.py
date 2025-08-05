@@ -339,7 +339,7 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
 
     with gr.Row():
         with gr.Column(scale=8):
-            chat_input = gr.Textbox(show_label=False, placeholder="Type a message to send to Omniparser + X ...", container=False)
+            chat_input = gr.Textbox(show_label=False, placeholder="Please type your test task here ...", container=False)
         with gr.Column(scale=1, min_width=50):
             submit_button = gr.Button(value="Send", variant="primary")
         with gr.Column(scale=1, min_width=50):
